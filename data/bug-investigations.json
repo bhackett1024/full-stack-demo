@@ -1,0 +1,14 @@
+[
+  {
+    "scenario": "Offline and reconnect",
+    "question": "Investigate the reported bug where Leo remains online in Maya's browser after his network drops. The report says backend webSocketClose runs for Leo, but this.ctx.getWebSockets() still includes the closing socket, so the presence broadcast still lists Leo. Verify this against the recordings rather than assuming the report is correct. Trace Leo's disconnect, the backend close handler and socket enumeration, the generated presence payload and broadcast, and Maya's receive/state/render path that leaves his online indicator visible. Save the relevant frontend and backend execution points with descriptions and show how they relate through recorded WebSocket/network evidence. Determine whether excluding the closing socket in presence() addresses the observed cause, and identify any evidence gaps. Do not modify the recorded app."
+  },
+  {
+    "scenario": "New teammate onboarding",
+    "question": "Investigate whether signing out of Priya's first tab fails to close the session's WebSocket in her second tab. This was reported from the test, not yet verified in Replay: the second tab received Maya's next update after sign-out and only then received a 401, while the server continued broadcasting to that socket, potentially including typing events with names. Trace the first tab's sign-out action and request, backend session invalidation and socket lifecycle, Maya's subsequent action and backend broadcast, and the second tab's message handling and subsequent unauthorized request. Save frontend points from all relevant tabs and backend points, and connect them using recorded request/session/socket evidence. Separate confirmed post-sign-out delivery from unverified claims about other broadcast types; explain the cause and remediation if supported. Do not modify the recorded app."
+  },
+  {
+    "scenario": "Group DM lifecycle",
+    "question": "Investigate the reported behavior where Sophie's muted group DM still shows an unread count of 2 in the sidebar. The test report says muting only suppresses Activity notifications; this has not yet been verified in Replay. Trace Sophie's mute action, the backend persistence of mute state, subsequent messages from other participants and their backend writes/broadcasts, unread-count calculation and bootstrap responses, and Sophie's frontend state/render path for the sidebar badge and Activity notifications. Add frontend and backend execution points as you discover them and connect their relationships using recorded network evidence. Verify the observed count and distinguish actual mute semantics from the expectation that muting should suppress unread badges; do not assume intent or label a behavior defective without evidence. Identify the relevant implementation cause and possible change if the desired behavior is to hide unread counts for muted conversations. Do not modify the recorded app."
+  }
+]

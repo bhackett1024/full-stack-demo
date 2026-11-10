@@ -1,0 +1,52 @@
+[
+  [
+    "Launch standup",
+    "Trace a standup message from its author's send handler through the backend write to its appearance in other users' browsers. Identify the points where each step occurs.",
+    "Trace a reply or mention across participants: where it originates, how the backend handles it, and where recipient browsers update the conversation or unread state."
+  ],
+  [
+    "Private channel secrecy",
+    "Trace private-channel creation and invitations from browser actions through backend membership changes to the invited users' UI updates.",
+    "Compare an authorized member and a non-member accessing the private channel. Identify frontend requests, backend permission decisions, and the resulting browser behavior."
+  ],
+  [
+    "Thread deep-dive",
+    "Trace a thread reply from submission through backend storage to updates in the thread and parent message across browsers, including Leo's phone.",
+    "Trace opening and reading a thread: connect browser actions to backend read-state handling and subsequent unread-indicator updates in other sessions."
+  ],
+  [
+    "Reaction storm",
+    "Trace concurrent reactions to the same message from different browsers. Connect each frontend action to its backend mutation and the resulting reaction counts shown to participants.",
+    "Follow a reaction being removed or toggled. Identify optimistic browser changes, backend handling, and how other browsers reconcile the final state."
+  ],
+  [
+    "Group DM lifecycle",
+    "Trace group-DM creation from the initiating browser through backend conversation and membership creation to its appearance for other participants.",
+    "Trace a membership change and a subsequent message. Identify the browser triggers, backend membership and delivery decisions, and which participants receive UI updates."
+  ],
+  [
+    "Do not disturb and muting",
+    "Trace a do-not-disturb setting change, then a message or mention targeting that user. Connect frontend settings, backend notification decisions, and the recipient's visible behavior.",
+    "Trace muting a conversation and subsequent message activity. Identify where message delivery, unread state, and notifications diverge across the frontend and backend."
+  ],
+  [
+    "Offline and reconnect",
+    "Trace a message attempted while disconnected through local browser state, reconnect behavior, backend handling, and its eventual appearance in the other browser. Identify retries or duplicate prevention.",
+    "Trace messages sent while the other participant is offline. Connect backend persistence to the reconnecting browser's catch-up requests and UI updates, checking ordering and missing or duplicate messages."
+  ],
+  [
+    "New teammate onboarding",
+    "Trace Priya joining from the onboarding UI through backend user/membership creation to the initial workspace shown in both Priya tabs and any updates visible to Maya.",
+    "Compare the visitor session with Priya's authenticated sessions. Identify their frontend requests, backend access decisions, and the resulting differences in visible workspace data."
+  ],
+  [
+    "Channel administration",
+    "Trace a channel setting change from the administrator's browser through backend authorization and persistence to updates in the other participants' browsers.",
+    "Trace a membership or access change and a subsequent affected-user action. Connect the initiating UI, backend enforcement, and the affected browser's response."
+  ],
+  [
+    "Editing and deletion races",
+    "Trace an edit and deletion targeting the same message across browsers. Identify frontend submission order, backend mutation order, and how each browser reaches its final displayed state.",
+    "Trace any stale browser operation against an already edited or deleted message. Connect the frontend's local state and outgoing request to the backend response and subsequent UI reconciliation."
+  ]
+]

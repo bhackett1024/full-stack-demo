@@ -1,0 +1,12 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE pairs (id TEXT PRIMARY KEY, owner TEXT NOT NULL, name TEXT NOT NULL, app TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('sample','live')), frontend_id TEXT NOT NULL, backend_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', data TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX pairs_owner ON pairs(owner,created_at);
+CREATE TABLE questions (id TEXT PRIMARY KEY, pair_id TEXT NOT NULL REFERENCES pairs(id), text TEXT NOT NULL, context TEXT NOT NULL, submission_key TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(pair_id,submission_key));
+CREATE TABLE runs (id TEXT PRIMARY KEY, question_id TEXT NOT NULL REFERENCES questions(id), status TEXT NOT NULL DEFAULT 'queued', answer TEXT, error TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX questions_pair ON questions(pair_id,created_at);
+CREATE INDEX runs_question ON runs(question_id,created_at);
+CREATE TABLE events (sequence INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL REFERENCES runs(id), logical_id TEXT NOT NULL, kind TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(run_id,logical_id));
+CREATE INDEX events_run ON events(run_id,sequence);
+CREATE TABLE evidence (id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), recording_id TEXT NOT NULL, point TEXT, label TEXT NOT NULL, data TEXT NOT NULL);
+CREATE TABLE timelines (id TEXT PRIMARY KEY, question_id TEXT NOT NULL REFERENCES questions(id), run_id TEXT NOT NULL REFERENCES runs(id), revision INTEGER NOT NULL, mapping_revision INTEGER NOT NULL, markers TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(question_id,revision), UNIQUE(run_id));
+CREATE TABLE artifacts (id TEXT PRIMARY KEY, pair_id TEXT NOT NULL REFERENCES pairs(id), object_key TEXT NOT NULL, content_type TEXT NOT NULL);

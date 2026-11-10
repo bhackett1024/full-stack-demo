@@ -1,0 +1,46 @@
+{
+  "name": "full-stack-replay-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "node scripts/local.mjs --dev",
+    "build": "vite build",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "dev:worker": "wrangler dev --ip 127.0.0.1 --port 8791",
+    "db:local": "wrangler d1 migrations apply DB --local",
+    "deploy": "npm run build && wrangler deploy",
+    "preview": "vite preview --host 127.0.0.1",
+    "start": "node scripts/local.mjs",
+    "test:integration": "node scripts/smoke.mjs",
+    "format": "prettier --write apps packages tests scripts"
+  },
+  "dependencies": {
+    "@replayio/protocol": "0.106.2",
+    "fast-png": "^8.0.0",
+    "jose": "^6.0.0",
+    "jpeg-js": "^0.4.4",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261106.1",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "prettier": "^3.9.10",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.0",
+    "wrangler": "^4.0.0"
+  }
+}

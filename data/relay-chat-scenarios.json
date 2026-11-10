@@ -1,0 +1,99 @@
+[
+  {
+    "name": "Launch standup",
+    "backendId": "c6e6d6a2-eb61-4319-a195-f627a5dd776b",
+    "browsers": [
+      ["Maya", "482cf508-c9d8-4e83-88ad-bd413a2284db"],
+      ["Leo", "689251f4-96a4-4ef4-9a61-5cf26d9b51a2"],
+      ["Ava", "e5de56a6-164c-44c8-84a9-bbece5eac6b7"],
+      ["Noah", "908e1899-9dd6-4148-b295-e752fed10ac5"],
+      ["Sophie", "d92fe7de-53d1-41f4-a558-44b72d16c2ce"]
+    ]
+  },
+  {
+    "name": "Private channel secrecy",
+    "backendId": "751d5fa7-cc94-47a3-b871-f642c6c612c9",
+    "browsers": [
+      ["Maya", "33a40f3d-2233-423d-8fd5-7c03267cbadc"],
+      ["Leo", "4374862b-52e5-443b-a8ce-0c8de88d0fcb"],
+      ["Ava", "0febc3a7-1989-48c1-be84-6badfde4368f"],
+      ["Noah", "515876e2-1393-4cb9-bedf-2561b12859d6"]
+    ]
+  },
+  {
+    "name": "Thread deep-dive",
+    "backendId": "e9c9632d-378a-4a16-8028-368ce09a758c",
+    "browsers": [
+      ["Ava", "a3d7efea-6fc7-4f49-8492-24f35d04486b"],
+      ["Leo, phone", "d329e136-b73a-4b41-808d-16f1c20824b5"],
+      ["Noah", "94f66d0a-8cc7-40fe-8177-a2800aab9212"],
+      ["Maya", "9e3d642d-d85a-4fbe-aef0-870c43a82f81"]
+    ]
+  },
+  {
+    "name": "Reaction storm",
+    "backendId": "46dcdaf3-9383-437e-8720-10f5404399cc",
+    "browsers": [
+      ["Maya", "d00d2379-b684-406f-98c7-9adace1b5a14"],
+      ["Leo", "9f019918-aafa-4e40-81a1-79c112ea89ba"],
+      ["Ava", "564bcd04-8afd-47a5-8d3e-d965cee01bd1"],
+      ["Noah", "859e00d7-626d-4185-81fa-4dbc98deb707"],
+      ["Sophie", "f273d4f5-bd63-47dd-af14-ab2b0194df5b"]
+    ]
+  },
+  {
+    "name": "Group DM lifecycle",
+    "backendId": "f068dd57-8856-477b-8dd6-d782a1bc632f",
+    "browsers": [
+      ["Leo", "962bc396-c412-4d73-919b-5ce98b9a6eab"],
+      ["Maya", "e095412b-b494-464c-b7dc-acbef23ae613"],
+      ["Sophie", "4757fdc2-381f-4d5a-afe2-0255bd8a441d"],
+      ["Noah", "6ef7de13-452d-419f-a251-eafa1d9677d2"]
+    ]
+  },
+  {
+    "name": "Do not disturb and muting",
+    "backendId": "7ea4e22e-e9c9-4603-876d-418239b1194d",
+    "browsers": [
+      ["Maya", "f32a7215-8de8-4d9b-a69a-48e80df468fa"],
+      ["Noah", "0a62b325-9f58-43d7-ba57-3f70fb1f97fa"],
+      ["Sophie", "a407e3f9-a851-42ce-9c49-f25c0e63efbd"]
+    ]
+  },
+  {
+    "name": "Offline and reconnect",
+    "backendId": "cd787ea8-e5be-43e8-9cac-5da2e4b091ec",
+    "browsers": [
+      ["Maya", "422e7934-bed9-46dc-88d9-c0a0a43a59f8"],
+      ["Leo", "fcec58df-1982-48bf-a5e7-90ef26de101a"]
+    ]
+  },
+  {
+    "name": "New teammate onboarding",
+    "backendId": "bac9e866-ca1d-4f64-a6ff-397e7d52aa07",
+    "browsers": [
+      ["Priya tab 1", "5d452a74-5b0a-489a-b6fb-a8488fe530b0"],
+      ["Priya tab 2", "2b9ae078-5184-4662-87fb-509ceaa8fcfa"],
+      ["Maya", "1e87391f-0dc9-427e-a012-e5d00ee2a3c9"],
+      ["visitor", "fe294aa1-0fe0-4035-b848-ef1f2f735d42"]
+    ]
+  },
+  {
+    "name": "Channel administration",
+    "backendId": "68a109e9-03ec-4c43-a55a-d0099bc6f6d5",
+    "browsers": [
+      ["Sophie", "706c6584-b071-42c2-b4ed-1ded4d25bf44"],
+      ["Leo", "7395ec38-41c3-4a50-9fe5-56ee5e24c3df"],
+      ["Noah", "27887bf7-8036-4788-bba0-76d4405deab2"]
+    ]
+  },
+  {
+    "name": "Editing and deletion races",
+    "backendId": "a7725a8b-25d6-40bd-9bb6-941672fca262",
+    "browsers": [
+      ["Maya", "db10411b-31dd-46b7-b32f-0953f75f81b2"],
+      ["Leo", "1597a8d9-8fff-4146-9e2a-708472ed227c"],
+      ["Ava", "4385b1f6-040e-4bbc-b365-aae3ba2953e9"]
+    ]
+  }
+]
