@@ -396,58 +396,6 @@ async function api(request: Request, env: Env) {
   match = path.match(/^\/api\/questions\/([^/]+)(?:\/(.*))?$/);
   if (match) {
     const question = await ownQuestion(env, match[1], owner);
-    if (!match[2] && method === "DELETE") {
-      const runs = await env.DB.prepare(
-        "SELECT id FROM runs WHERE question_id=? AND status IN ('queued','running')",
-      )
-        .bind(question.id)
-        .all<{ id: string }>();
-      // Stop writers before removing their evidence and history. The status guard
-      // also stops workflows if termination finds an already-finished instance.
-      await env.DB.prepare(
-        "UPDATE runs SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE question_id=? AND status IN ('queued','running')",
-      )
-        .bind(question.id)
-        .run();
-      await Promise.all(
-        runs.results.map(async (run) => {
-          try {
-            await (await env.INVESTIGATIONS.get(run.id)).terminate();
-          } catch {}
-        }),
-      );
-      const investigationArtifacts = await env.DB.prepare(
-        "SELECT a.object_key FROM artifacts a JOIN runs r ON substr(a.id,1,length(r.id)+1)=r.id || '-' WHERE r.question_id=? AND a.pair_id=?",
-      )
-        .bind(question.id, question.pair_id)
-        .all<{ object_key: string }>();
-      for (let i = 0; i < investigationArtifacts.results.length; i += 1000) {
-        await env.BUCKET.delete(
-          investigationArtifacts.results
-            .slice(i, i + 1000)
-            .map((item) => item.object_key),
-        );
-      }
-      await env.DB.batch([
-        env.DB.prepare(
-          "DELETE FROM artifacts WHERE pair_id=? AND EXISTS (SELECT 1 FROM runs r WHERE r.question_id=? AND substr(artifacts.id,1,length(r.id)+1)=r.id || '-')",
-        ).bind(question.pair_id, question.id),
-        env.DB.prepare(
-          "DELETE FROM events WHERE run_id IN (SELECT id FROM runs WHERE question_id=?)",
-        ).bind(question.id),
-        env.DB.prepare(
-          "DELETE FROM evidence WHERE run_id IN (SELECT id FROM runs WHERE question_id=?)",
-        ).bind(question.id),
-        env.DB.prepare("DELETE FROM timelines WHERE question_id=?").bind(
-          question.id,
-        ),
-        env.DB.prepare("DELETE FROM runs WHERE question_id=?").bind(
-          question.id,
-        ),
-        env.DB.prepare("DELETE FROM questions WHERE id=?").bind(question.id),
-      ]);
-      return { deleted: true };
-    }
     if (!match[2] && method === "GET") {
       const timelines = await env.DB.prepare(
         "SELECT * FROM timelines WHERE question_id=? ORDER BY revision DESC",

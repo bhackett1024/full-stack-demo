@@ -17,7 +17,6 @@ const Markdown = React.memo(function Markdown({
   );
 });
 import {
-  Trash2,
   ArrowUpRight,
   ArrowLeft,
   ArrowRight,
@@ -653,8 +652,6 @@ function Workspace({
     [error, setError] = useState(""),
     [questionText, setQuestionText] = useState(""),
     [asking, setAsking] = useState(false),
-    [confirmDelete, setConfirmDelete] = useState(false),
-    [deleting, setDeleting] = useState(false),
     [investigationsExpanded, setInvestigationsExpanded] = useState(true),
     [playing, setPlaying] = useState(false),
     [zoom, setZoom] = useState(1),
@@ -763,7 +760,6 @@ function Workspace({
   }, [pairId, reloadKey]);
   useEffect(() => {
     setRevision(undefined);
-    setConfirmDelete(false);
     setHoveredFrame(undefined);
     setMarker(undefined);
     setInspection(undefined);
@@ -995,29 +991,6 @@ function Workspace({
       setError((e as Error).message);
     } finally {
       setAsking(false);
-    }
-  };
-  const deleteInvestigation = async () => {
-    if (!selected || deleting) return;
-    const id = selected.id;
-    setDeleting(true);
-    setError("");
-    try {
-      await api(`/questions/${id}`, { method: "DELETE" });
-      setQuestions((items) => items.filter((item) => item.id !== id));
-      setConfirmDelete(false);
-      if (route().query.get("q") === id) {
-        setSelected(undefined);
-        setMarker(undefined);
-        setInspection(undefined);
-        inspectGeneration.current++;
-        navigate(pairId);
-      }
-      setReloadKey((n) => n + 1);
-    } catch (error) {
-      setError((error as Error).message);
-    } finally {
-      setDeleting(false);
     }
   };
   const mutate = async (path: string) => {
@@ -1601,43 +1574,7 @@ function Workspace({
               <div className="conversation-heading">
                 <span className="eyebrow">INVESTIGATION</span>
                 <h2>{selected.text}</h2>
-                <div>
-                  <Status status={selected.status} />
-                  <button
-                    type="button"
-                    className="delete-investigation"
-                    aria-label="Delete investigation"
-                    disabled={deleting}
-                    onClick={() => setConfirmDelete(true)}
-                  >
-                    <Trash2 size={13} /> Delete
-                  </button>
-                </div>
-                {confirmDelete && (
-                  <div
-                    className="delete-investigation-confirm"
-                    role="group"
-                    aria-label="Confirm investigation deletion"
-                  >
-                    <span>Delete this investigation and its history?</span>
-                    <button
-                      type="button"
-                      className="button secondary"
-                      disabled={deleting}
-                      onClick={() => setConfirmDelete(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="button danger"
-                      disabled={deleting}
-                      onClick={() => void deleteInvestigation()}
-                    >
-                      {deleting ? "Deleting…" : "Delete investigation"}
-                    </button>
-                  </div>
-                )}
+                <Status status={selected.status} />
               </div>
               {selected.answer && (
                 <div className="answer">
@@ -1674,7 +1611,6 @@ function Workspace({
                 {["queued", "running"].includes(selected.status) ? (
                   <button
                     className="button secondary"
-                    disabled={deleting}
                     onClick={() =>
                       void mutate(`/runs/${selected.run_id}/cancel`)
                     }
@@ -1685,7 +1621,6 @@ function Workspace({
                 ) : (
                   <button
                     className="button secondary"
-                    disabled={deleting}
                     onClick={() => {
                       setRevision(undefined);
                       void mutate(`/questions/${selected.id}/retry`);

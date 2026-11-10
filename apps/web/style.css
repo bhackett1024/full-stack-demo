@@ -4954,44 +4954,7 @@ body:has(.studio) .app-header {
   color: #857b8b;
 }
 
-.delete-investigation {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 8px;
-  background: transparent;
-  color: #857b8b;
-  border-radius: 5px;
-  font-size: 12px;
-}
-.delete-investigation:hover {
-  color: #b03a56;
-  background: #fff0f3;
-}
-.delete-investigation-confirm {
-  padding: 10px 12px;
-  border: 1px solid #ebcdd5;
-  border-radius: 6px;
-  background: #fff7f9;
-  margin-top: 10px;
-}
-.delete-investigation-confirm > span {
-  flex: 1 1 100%;
-  color: #59323e;
-}
-.delete-investigation-confirm .button {
-  padding: 6px 10px;
-  min-height: 0;
-  font-size: 12px;
-}
-.button.danger {
-  background: #b83c5d;
-  color: #fff;
-  border: 1px solid #b83c5d;
-}
-
-.studio .point-expression .markdown pre {
+.point-expression .markdown pre {
   overflow: visible;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

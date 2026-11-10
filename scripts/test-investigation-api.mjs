@@ -4,8 +4,8 @@ import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const base = "http://127.0.0.1:8791";
-const prefix = `delete-test-${crypto.randomUUID()}`;
-const dir = mkdtempSync(join(tmpdir(), "investigation-delete-"));
+const prefix = `investigation-test-${crypto.randomUUID()}`;
+const dir = mkdtempSync(join(tmpdir(), "investigation-api-"));
 const id = (suffix) => `${prefix}-${suffix}`;
 function sql(query) {
   const file = join(dir, "query.sql");
@@ -102,14 +102,14 @@ try {
     403,
   );
   const removed = await request(`/questions/${id("question")}`, "DELETE");
-  assert.equal(removed.status, 200, await removed.text());
+  assert.equal(removed.status, 404, await removed.text());
   for (const path of [
     `/questions/${id("question")}`,
     `/runs/${id("old")}`,
     `/runs/${id("active")}`,
     `/runs/${id("old")}/events`,
   ])
-    assert.equal((await request(path)).status, 404, path);
+    assert.equal((await request(path)).status, 200, path);
   assert.equal(
     (await request(`/questions/${id("question")}`, "DELETE")).status,
     404,
@@ -118,19 +118,23 @@ try {
   assert.equal((await request(`/pairs/${id("pair")}`)).status, 200);
   const list = await (await request(`/pairs/${id("pair")}/questions`)).json();
   assert.deepEqual(
-    list.map((q) => q.id),
-    [id("keep")],
+    list.map((q) => q.id).sort(),
+    [id("keep"), id("question")].sort(),
+  );
+  assert.equal(
+    (await (await request(`/runs/${id("active")}`)).json()).status,
+    "running",
   );
   const result = sql(
     `SELECT (SELECT count(*) FROM evidence WHERE id='${id("evidence")}')+(SELECT count(*) FROM timelines WHERE question_id='${id("question")}')+(SELECT count(*) FROM events WHERE run_id IN ('${id("old")}','${id("active")}'))+(SELECT count(*) FROM artifacts WHERE id='${id("old")}-tool-result') AS remaining, (SELECT count(*) FROM questions WHERE id='${id("private-question")}') AS private_kept,(SELECT count(*) FROM artifacts WHERE id='${id("shared-artifact")}') AS shared_kept;`,
   );
   assert.deepEqual(result[0].results[0], {
-    remaining: 0,
+    remaining: 6,
     private_kept: 1,
     shared_kept: 1,
   });
   console.log(
-    "PASS: local workerd deletion, revision/evidence/event/artifact cleanup, active-run handling, ownership and origin checks, and unrelated data preservation.",
+    "PASS: deletion is unavailable and investigation history remains intact; preparation, cache revalidation, ownership and origin checks pass.",
   );
 } finally {
   sql(
