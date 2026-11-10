@@ -50,6 +50,43 @@ try {
     INSERT INTO timelines(id,question_id,run_id,revision,mapping_revision,markers) VALUES('${id("t1")}','${id("question")}','${id("old")}',1,1,'[]'),('${id("t2")}','${id("question")}','${id("active")}',2,1,'[]');
     INSERT INTO artifacts(id,pair_id,object_key,content_type) VALUES('${id("old")}-tool-result','${id("pair")}','${prefix}/result','application/json'),('${id("shared-artifact")}','${id("pair")}','${prefix}/shared','application/json');
   `);
+  // Ready and in-flight preparation requests are repeatable no-ops.
+  sql(
+    `UPDATE pairs SET status='ready',data='{"preparedVersion":4,"preparation":{"workflowId":"existing-ready"}}' WHERE id='${id("pair")}';`,
+  );
+  for (let i = 0; i < 2; i++)
+    assert.deepEqual(
+      await (await request(`/pairs/${id("pair")}/prepare`, "POST")).json(),
+      { ready: true },
+    );
+  let pairResponse = await request(`/pairs/${id("pair")}`);
+  const etag = pairResponse.headers.get("ETag");
+  assert.ok(etag);
+  assert.equal(
+    (await pairResponse.json()).data.preparation.workflowId,
+    "existing-ready",
+  );
+  const unchanged = await fetch(`${base}/api/pairs/${id("pair")}`, {
+    headers: { "If-None-Match": etag },
+  });
+  assert.equal(unchanged.status, 304);
+  assert.equal(await unchanged.text(), "");
+  sql(
+    `UPDATE pairs SET status='preparing',data='{"preparation":{"workflowId":"existing-active"}}' WHERE id='${id("pair")}';`,
+  );
+  for (let i = 0; i < 2; i++)
+    assert.deepEqual(
+      await (await request(`/pairs/${id("pair")}/prepare`, "POST")).json(),
+      { status: "preparing" },
+    );
+  pairResponse = await fetch(`${base}/api/pairs/${id("pair")}`, {
+    headers: { "If-None-Match": etag },
+  });
+  assert.equal(pairResponse.status, 200);
+  assert.equal(
+    (await pairResponse.json()).data.preparation.workflowId,
+    "existing-active",
+  );
   assert.equal(
     (await request(`/questions/${id("private-question")}`, "DELETE")).status,
     404,

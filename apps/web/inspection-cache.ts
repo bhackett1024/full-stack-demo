@@ -2,11 +2,11 @@ import type { Inspection, PointRef } from "../../packages/domain/types";
 export type InspectionData = Inspection & { inspectionToken?: string };
 export const inspectionKey = (point: PointRef, frameIndex = 0) =>
   `${point.recordingId}:${point.executionPoint}:${frameIndex}`;
-/** One request per recording: Replay's pause/session state must not race. */
+/** Cached snapshots can load concurrently; the server serializes live Replay work. */
 export class InspectionCache {
   private values = new Map<string, InspectionData>();
   private pending = new Map<string, Promise<InspectionData>>();
-  private active = new Set<string>();
+  private active = new Map<string, number>();
   private queue: {
     key: string;
     recording: string;
@@ -17,6 +17,7 @@ export class InspectionCache {
       point: PointRef,
       frameIndex: number,
     ) => Promise<InspectionData>,
+    private concurrency = 3,
   ) {}
   peek(point: PointRef, frameIndex = 0) {
     return this.values.get(inspectionKey(point, frameIndex));
@@ -55,7 +56,10 @@ export class InspectionCache {
           reject(e);
         } finally {
           this.pending.delete(key);
-          this.active.delete(point.recordingId);
+          this.active.set(
+            point.recordingId,
+            (this.active.get(point.recordingId) ?? 1) - 1,
+          );
           this.drain();
         }
       },
@@ -68,12 +72,12 @@ export class InspectionCache {
   private drain() {
     for (let i = 0; i < this.queue.length;) {
       const job = this.queue[i];
-      if (this.active.has(job.recording)) {
+      if ((this.active.get(job.recording) ?? 0) >= this.concurrency) {
         i++;
         continue;
       }
       this.queue.splice(i, 1);
-      this.active.add(job.recording);
+      this.active.set(job.recording, (this.active.get(job.recording) ?? 0) + 1);
       void job.run();
     }
   }

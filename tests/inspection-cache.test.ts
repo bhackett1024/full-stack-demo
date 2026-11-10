@@ -37,7 +37,7 @@ it("serializes each recording while loading independent recordings concurrently"
   const cache = new InspectionCache(async (p) => {
     calls.push(p.recordingId + p.executionPoint);
     return gates[calls.length - 1].promise;
-  });
+  }, 1);
   const a = cache.load(point("a", "1")),
     b = cache.load(point("a", "2")),
     c = cache.load(point("b", "1"));
@@ -55,7 +55,7 @@ it("prioritizes a clicked point ahead of queued background work", async () => {
   const cache = new InspectionCache(async (p) => {
     calls.push(p.executionPoint);
     return p.executionPoint === "1" ? first.promise : data;
-  });
+  }, 1);
   const tasks = [
     cache.load(point("a", "1")),
     cache.load(point("a", "2")),
@@ -79,4 +79,22 @@ it("retries failures and separates frames and recordings", async () => {
   await cache.load(p, 1);
   await cache.load(point("b", "1"));
   expect(calls).toBe(4);
+});
+
+it("loads three cached points per recording concurrently and bounds queued work", async () => {
+  const calls: string[] = [];
+  const gates = Array.from({ length: 4 }, deferred);
+  const cache = new InspectionCache(async (p) => {
+    calls.push(p.executionPoint);
+    return gates[Number(p.executionPoint) - 1].promise;
+  });
+  const pending = [1, 2, 3, 4].map((n) =>
+    cache.load(point("recording", String(n))),
+  );
+  expect(calls).toEqual(["1", "2", "3"]);
+  gates[1].resolve(data);
+  await pending[1];
+  expect(calls).toEqual(["1", "2", "3", "4"]);
+  for (const gate of gates) gate.resolve(data);
+  await Promise.all(pending);
 });

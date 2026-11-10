@@ -3,6 +3,7 @@ import {
   prepared,
   PREPARATION_VERSION,
   scanPercent,
+  preparationMessage,
 } from "../packages/domain/preparation";
 import type { Pair } from "../packages/domain/types";
 describe("recording loading gate", () => {
@@ -57,4 +58,16 @@ describe("recording loading gate", () => {
       }),
     ).toBe(42.5);
   });
+});
+
+it("explains timeouts without displaying internal workflow exceptions", () => {
+  expect(
+    preparationMessage(
+      "WorkflowTimeoutError: Execution timed out after 120000ms",
+    ),
+  ).toBe(
+    "Replay is taking longer than expected to load these recordings. Retry to check its latest progress.",
+  );
+  expect(preparationMessage("Error: workflow failed")).not.toContain("Error:");
+  expect(preparationMessage("Recording not found")).toBe("Recording not found");
 });

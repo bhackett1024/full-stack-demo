@@ -90,11 +90,13 @@ export class PreparationWorkflow extends WorkflowEntrypoint<
         for (let poll = 0; poll < 180; poll++) {
           recordings = await step.do(
             `Replay progress ${poll}`,
-            { timeout: "2 minutes", retries: { limit: 2, delay: "3 seconds" } },
+            { timeout: "6 minutes", retries: { limit: 2, delay: "3 seconds" } },
             async () => {
               await client.init();
+              const progress = [...recordings];
+              let save = Promise.resolve();
               const results = await Promise.all(
-                recordings.map(async (recording) => {
+                recordings.map(async (recording, recordingIndex) => {
                   if (recording.state === "ready") return recording;
                   const result = structuredResult(
                     await client.call("WarmRecording", {
@@ -111,11 +113,18 @@ export class PreparationWorkflow extends WorkflowEntrypoint<
                     throw new Error(
                       `Replay returned an unrecognized loading state for ${recording.label}`,
                     );
-                  return {
+                  const updated = {
                     ...result,
                     recordingId: recording.recordingId,
                     label: recording.label,
                   } as RecordingProgress;
+                  progress[recordingIndex] = updated;
+                  const snapshot = [...progress];
+                  save = save.then(() =>
+                    saveProgress("Loading Replay recordings", snapshot),
+                  );
+                  await save;
+                  return updated;
                 }),
               );
               await saveProgress("Loading Replay recordings", results);

@@ -62,18 +62,40 @@ import {
   shotsFor,
   displayTime,
 } from "../../packages/domain/types";
-import { prepared, scanPercent } from "../../packages/domain/preparation";
+import {
+  prepared,
+  scanPercent,
+  preparationMessage,
+} from "../../packages/domain/preparation";
 import "./style.css";
+const responseCache = new Map<string, { etag: string; value: unknown }>();
 async function api<T = any>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const cached =
+    !options.method || options.method === "GET"
+      ? responseCache.get(path)
+      : undefined;
   const response = await fetch(`/api${path}`, {
     ...options,
-    headers: { "Content-Type": "application/json", ...options.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(cached ? { "If-None-Match": cached.etag } : {}),
+      ...options.headers,
+    },
   });
+  if (response.status === 304 && cached)
+    return structuredClone(cached.value) as T;
   const data: any = await response.json();
   if (!response.ok) throw new Error(data.error ?? "Request failed");
+  const etag = response.headers.get("ETag");
+  if (etag && (!options.method || options.method === "GET")) {
+    responseCache.delete(path);
+    responseCache.set(path, { etag, value: structuredClone(data) });
+    if (responseCache.size > 100)
+      responseCache.delete(responseCache.keys().next().value!);
+  }
   return data;
 }
 const post = <T,>(path: string, data: unknown = {}) =>
@@ -112,8 +134,10 @@ function App() {
     [modal, setModal] = useState<"import" | null>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
+  const pairsLoadedAt = useRef(0);
   const refresh = async () => {
     try {
+      pairsLoadedAt.current = Date.now();
       setPairs(await api<Pair[]>("/pairs"));
       setError("");
     } catch (e) {
@@ -128,7 +152,8 @@ function App() {
     return () => window.removeEventListener("hashchange", handler);
   }, []);
   useEffect(() => {
-    if (!current.pairId) void refresh();
+    if (!current.pairId && Date.now() - pairsLoadedAt.current > 30000)
+      void refresh();
   }, [current.pairId]);
   return (
     <>
@@ -523,7 +548,7 @@ function RecordingLoading({
         <p>{pair?.name ?? "Opening workspace…"}</p>
       </div>
       <div className="loading-stage" role="status" aria-live="polite">
-        {failure ||
+        {preparationMessage(failure) ||
           (pair && prepared(pair)
             ? "Loading saved questions…"
             : progress?.stage || "Connecting to Replay…")}
@@ -683,6 +708,8 @@ function Workspace({
       started = false;
     let timer: ReturnType<typeof setTimeout>;
     let readyPair: Pair | undefined;
+    let lastList = "",
+      listDelay = 3000;
     const controller = new AbortController();
     const load = async () => {
       try {
@@ -715,10 +742,14 @@ function Workspace({
             ),
           );
         }
-        setQuestions(qs);
+        const serialized = JSON.stringify(qs);
+        listDelay =
+          serialized === lastList ? Math.min(15000, listDelay * 2) : 3000;
+        if (serialized !== lastList) setQuestions(qs);
+        lastList = serialized;
         setWorkspaceLoaded(true);
         if (qs.some((q) => ["queued", "running"].includes(q.status)))
-          timer = setTimeout(load, 3000);
+          timer = setTimeout(load, listDelay);
       } catch (e) {
         if (!stopped) setError((e as Error).message);
       }
@@ -744,6 +775,8 @@ function Workspace({
     eventsRef.current = [];
     let stopped = false,
       runId = "";
+    let lastSnapshot = "",
+      pollDelay = 1500;
     let timer: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
     const load = async () => {
@@ -764,6 +797,15 @@ function Workspace({
         if (runId !== q.run_id) {
           runId = q.run_id;
           eventsRef.current = [];
+        }
+        const snapshot = JSON.stringify(q);
+        const unchanged = snapshot === lastSnapshot;
+        pollDelay = unchanged ? Math.min(10000, pollDelay * 2) : 1500;
+        lastSnapshot = snapshot;
+        if (unchanged) {
+          if (["queued", "running"].includes(q.status))
+            timer = setTimeout(load, pollDelay);
+          return;
         }
         const incoming = q.events;
         delete q.events;
@@ -793,7 +835,7 @@ function Workspace({
           setEvents(eventsRef.current);
         }
         if (hasMore || ["queued", "running"].includes(q.status))
-          timer = setTimeout(load, hasMore ? 0 : 1500);
+          timer = setTimeout(load, hasMore ? 0 : pollDelay);
       } catch (e) {
         if (!stopped) setError((e as Error).message);
       }
@@ -1162,64 +1204,19 @@ function Workspace({
                   <ExternalLink size={13} />
                 </a>
               ))}
-              <div className="vertical-link">
-                <span /> <Link size={12} />
-                {pair.data.correlations.length} request link
-                {pair.data.correlations.length !== 1 ? "s" : ""}
-                <span />
-              </div>
-              <div className="runtime-card backend">
+              <a
+                className="runtime-card backend"
+                href={`https://app.replay.io/recording/${pair.backend_id}`}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <Server size={19} />
                 <div>
                   <strong>{pair.data.backendLabel ?? "Backend"}</strong>
                   <small title={pair.backend_id}>{pair.backend_id}</small>
                 </div>
-                <span className="purple-dot" />
-              </div>
-              <div className="alignment">
-                <span>TIME ALIGNMENT</span>
-                <strong>
-                  {pair.data.alignment?.status === "aligned"
-                    ? browsers.some((b) => b.clock?.model === "events")
-                      ? "Event-aligned"
-                      : "Synchronized"
-                    : pair.data.alignment?.status === "partial"
-                      ? "Partially aligned"
-                      : "Not synchronized"}
-                </strong>
-                <small>
-                  {pair.data.correlations.length} matched requests
-                  {browsers.some((b) => b.clock?.model === "events") &&
-                    " · timing between matches is approximate"}
-                </small>
-                {pair.data.alignment && (
-                  <details className="alignment-evidence">
-                    <summary>Alignment evidence</summary>
-                    {pair.data.alignment.clocks.map((clock) => (
-                      <p key={clock.recordingId}>
-                        <strong>
-                          {
-                            browsers.find((b) => b.id === clock.recordingId)
-                              ?.label
-                          }
-                        </strong>
-                        : {clock.anchors} unique matches.{" "}
-                        {clock.reason ??
-                          `Constant clock offset; ±${Math.ceil(clock.uncertainty ?? 0)} ms uncertainty.`}
-                      </p>
-                    ))}
-                    {pair.data.alignment.evidenceArtifactId && (
-                      <a
-                        href={`/api/artifacts/${pair.data.alignment.evidenceArtifactId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        View recorded evidence ↗
-                      </a>
-                    )}
-                  </details>
-                )}
-              </div>
+                <ExternalLink size={13} />
+              </a>
             </aside>
           </details>
         </div>
@@ -1238,7 +1235,9 @@ function Workspace({
         </div>
       )}
       {pair.data.preparationError && (
-        <div className="notice error">{pair.data.preparationError}</div>
+        <div className="notice error">
+          {preparationMessage(pair.data.preparationError)}
+        </div>
       )}
       <section className="recording-stage">
         <div className="stage-main">
@@ -1659,17 +1658,17 @@ function Workspace({
                 <span>{events.length} events</span>
               </div>
               <div className="transcript">
-                {events
-                  .filter((e) => e.kind !== "answer")
-                  .map((e) => (
-                    <Event key={e.sequence} event={e} />
-                  ))}
                 {["queued", "running"].includes(selected.status) && (
                   <div className="agent-working">
                     <LoaderCircle size={14} className="spin" />
                     Investigating across the recording…
                   </div>
                 )}
+                {events
+                  .filter((e) => e.kind !== "answer")
+                  .map((e) => (
+                    <Event key={e.sequence} event={e} />
+                  ))}
               </div>
               <div className="conversation-actions">
                 {["queued", "running"].includes(selected.status) ? (
@@ -1976,7 +1975,11 @@ function Screenshot({
     />
   );
 }
-function Event({ event }: { event: ConversationEvent }) {
+const Event = React.memo(function Event({
+  event,
+}: {
+  event: ConversationEvent;
+}) {
   if (event.kind === "usage")
     return (
       <details className="usage-note">
@@ -2034,7 +2037,7 @@ function Event({ event }: { event: ConversationEvent }) {
       <Markdown>{event.content.text ?? ""}</Markdown>
     </div>
   );
-}
+});
 function Inspector({
   pair,
   marker,
@@ -2132,12 +2135,7 @@ function Inspector({
           </button>
         </div>
       )}
-      {busy && !data ? (
-        <div className="empty">
-          <LoaderCircle className="spin" />
-          Loading source, stack, and scopes…
-        </div>
-      ) : data ? (
+      {busy || data ? (
         <>
           <div
             className={`inspector-grid ${marker.expressions?.length ? "with-expressions" : ""}`}
@@ -2157,7 +2155,7 @@ function Inspector({
                 >
                   {busy
                     ? "Loading…"
-                    : `Paused at ${data.line}:${(frame?.column ?? 0) + 1}`}
+                    : `Paused at ${data?.line}:${(frame?.column ?? 0) + 1}`}
                 </button>
                 <button
                   type="button"
@@ -2183,44 +2181,22 @@ function Inspector({
                 tabIndex={0}
                 aria-label="Source code"
               >
-                {data.source.split("\n").map((line, i) => {
-                  const paused = i + 1 === data.line;
-                  const column = Math.max(
-                    0,
-                    Math.min(line.length, frame?.column ?? 0),
-                  );
-                  return (
-                    <div
-                      className={paused ? "executing" : ""}
-                      key={i}
-                      ref={paused ? pausedLineRef : undefined}
-                      aria-current={paused ? "location" : undefined}
-                    >
-                      <span className="line-number">
-                        <span className="pause-arrow" aria-hidden="true">
-                          {paused ? "▶" : ""}
-                        </span>
-                        {i + 1}
-                      </span>
-                      <code>
-                        {paused ? (
-                          <>
-                            {highlight(line.slice(0, column))}
-                            <span
-                              ref={pausedColumnRef}
-                              className="paused-column"
-                            >
-                              {highlight(line.slice(column, column + 1) || " ")}
-                            </span>
-                            {highlight(line.slice(column + 1))}
-                          </>
-                        ) : (
-                          highlight(line)
-                        )}
-                      </code>
-                    </div>
-                  );
-                })}
+                {!data && (
+                  <span className="source-loading">
+                    Loading source, stack, and scopes…
+                  </span>
+                )}
+                {data?.source.split("\n").map((line, i) => (
+                  <SourceLine
+                    key={i}
+                    line={line}
+                    number={i + 1}
+                    paused={i + 1 === data.line}
+                    column={i + 1 === data.line ? (frame?.column ?? 0) : 0}
+                    lineRef={pausedLineRef}
+                    columnRef={pausedColumnRef}
+                  />
+                ))}
               </pre>
             </section>
             {!!marker.expressions?.length && (
@@ -2260,7 +2236,13 @@ function Inspector({
               className="debug-details"
               key={`${marker.point.recordingId}:${marker.point.executionPoint}`}
             >
-              <summary aria-label="Call stack and variables">
+              <summary
+                aria-label="Call stack and variables"
+                aria-disabled={!data}
+                onClick={(event) => {
+                  if (!data) event.preventDefault();
+                }}
+              >
                 <span>
                   <ChevronRight size={14} />
                   Call stack
@@ -2269,7 +2251,7 @@ function Inspector({
               </summary>
               <div className="debug-details-content">
                 <section className="stack-pane">
-                  {data.frames.map((f) => (
+                  {data?.frames.map((f) => (
                     <button
                       key={f.id}
                       className={f.id === data.selectedFrame ? "active" : ""}
@@ -2283,7 +2265,7 @@ function Inspector({
                   ))}
                 </section>
                 <section className="variables-pane">
-                  {data.scopes.map((scope, i) => (
+                  {data?.scopes.map((scope, i) => (
                     <details open key={`${scope.name}-${i}`}>
                       <summary>{scope.name}</summary>
                       {scope.values.map((v, j) => (
@@ -2303,7 +2285,7 @@ function Inspector({
               </div>
             </details>
           </div>
-          {data.warning && (
+          {data?.warning && (
             <div className="inspector-warning">{data.warning}</div>
           )}
         </>
@@ -2315,6 +2297,51 @@ function Inspector({
     </section>
   );
 }
+const SourceLine = React.memo(function SourceLine({
+  line,
+  number,
+  paused,
+  column,
+  lineRef,
+  columnRef,
+}: {
+  line: string;
+  number: number;
+  paused: boolean;
+  column: number;
+  lineRef: React.RefObject<HTMLDivElement | null>;
+  columnRef: React.RefObject<HTMLSpanElement | null>;
+}) {
+  column = Math.max(0, Math.min(line.length, column));
+  return (
+    <div
+      className={paused ? "executing" : ""}
+      ref={paused ? lineRef : undefined}
+      aria-current={paused ? "location" : undefined}
+    >
+      <span className="line-number">
+        <span className="pause-arrow" aria-hidden="true">
+          {paused ? "▶" : ""}
+        </span>
+        {number}
+      </span>
+      <code>
+        {paused ? (
+          <>
+            {highlight(line.slice(0, column))}
+            <span className="paused-column" ref={columnRef}>
+              {highlight(line.slice(column, column + 1) || " ")}
+            </span>
+            {highlight(line.slice(column + 1))}
+          </>
+        ) : (
+          highlight(line)
+        )}
+      </code>
+    </div>
+  );
+});
+
 function highlight(line: string) {
   return line
     .split(

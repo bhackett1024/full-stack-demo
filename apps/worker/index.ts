@@ -1,8 +1,12 @@
+import { conditionalJson } from "../../packages/domain/http-cache";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
 import { cacheScreenshot, screenshotResponse } from "./screenshots";
 import { eventCursor } from "../../packages/domain/qa";
-import { prepared } from "../../packages/domain/preparation";
+import {
+  prepared,
+  PREPARATION_VERSION,
+} from "../../packages/domain/preparation";
 import { validDemoSession, demoLogin } from "./demo-auth";
 import type { Env } from "./env";
 import {
@@ -214,11 +218,14 @@ async function api(request: Request, env: Env) {
         ],
       };
       const claimed = await env.DB.prepare(
-        "UPDATE pairs SET status='preparing', data=json_set(json_remove(data,'$.preparationError'),'$.preparation',json(?)), updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!='preparing' RETURNING id",
+        "UPDATE pairs SET status='preparing', data=json_set(json_remove(data,'$.preparationError'),'$.preparation',json(?)), updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!='preparing' AND NOT(status='ready' AND COALESCE(json_extract(data,'$.preparedVersion'),0)=?) RETURNING id",
       )
-        .bind(JSON.stringify(progress), pair.id)
+        .bind(JSON.stringify(progress), pair.id, PREPARATION_VERSION)
         .first();
-      if (!claimed) return { status: "preparing" };
+      if (!claimed)
+        return prepared(await pairById(env, pair.id, owner))
+          ? { ready: true }
+          : { status: "preparing" };
       try {
         await env.PREPARATION.create({
           id: workflowId,
@@ -597,7 +604,7 @@ const worker = {
         );
         response.headers.set(
           "Cache-Control",
-          new URL(request.url).pathname.startsWith("/assets/") &&
+          /^\/(assets|fonts)\//.test(new URL(request.url).pathname) &&
             !response.headers.get("Content-Type")?.includes("text/html")
             ? "public, max-age=31536000, immutable"
             : "private, no-store",
@@ -609,7 +616,9 @@ const worker = {
       const response =
         value instanceof Response
           ? new Response(value.body, value)
-          : Response.json(value);
+          : request.method === "GET"
+            ? await conditionalJson(request, value)
+            : Response.json(value);
       response.headers.set("X-Content-Type-Options", "nosniff");
       response.headers.set(
         "Cache-Control",
